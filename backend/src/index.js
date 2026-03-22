@@ -20,6 +20,11 @@ app.get('/api/health', (req, res) => {
 app.use('/api/productos', require('./routes/productos'))
 app.use('/api/ingredientes', require('./routes/ingredientes'))
 app.use('/api/producto_ingredientes',require('./routes/producto_ingredientes'))
+
+// Autenticación
+app.use('/api/auth', require('./routes/auth'))
+
+// Rutas protegidas
 app.use('/api/pedidos', require('./routes/pedidos'))
 
 const server = app.listen(PORT, () => {

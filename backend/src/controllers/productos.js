@@ -8,7 +8,7 @@ const pool = require('../db')
 const getProductos = async (req, res) => {
   try {
     //Hace la query a la base de datos, este es el codigo que puede fallar
-    const productos = await pool.query('SELECT * FROM producto_base')
+    const productos = await pool.query('SELECT * FROM producto_base WHERE activo = true')
 
     const productosConIngredientes = await Promise.all(
       productos.rows.map(async (producto) => {
@@ -36,6 +36,11 @@ const getProductoById = async (req, res) => {
   try {
     // el id viene de la URL → /api/productos/5 los cuales usa req ya que es lo que el cliente manda
     const { id } = req.params
+
+    // [MODIFICADO] Validación para garantizar que el ID no esté vacío
+    if (!id) {
+      return res.status(400).json({ error: 'El id del producto es requerido' })
+    }
 
     // busca el producto
     const result = await pool.query(
@@ -72,6 +77,12 @@ const getProductoById = async (req, res) => {
 const createProducto = async (req,res) =>{
     try{
         const{nombre,precio_base,tipo} = req.body
+
+        // [MODIFICADO] Se valida la presencia de los campos requeridos para crear el producto
+        if (!nombre || precio_base === undefined || !tipo) {
+            return res.status(400).json({ error: 'Los campos nombre, precio_base y tipo son obligatorios' })
+        }
+
         // 1. verificar si ya existe
         const existe = await pool.query(
             'SELECT * FROM producto_base WHERE nombre = $1',
@@ -99,6 +110,24 @@ const actualizarProductoById = async (req,res) =>{
     try{
         const {id} = req.params
         const{nombre,precio_base,tipo} = req.body
+
+        // [MODIFICADO] Se requiere que el id y los campos a actualizar estén presentes
+        if (!id) {
+            return res.status(400).json({ error: 'El id del producto es requerido para actualizar' })
+        }
+        if (!nombre || precio_base === undefined || !tipo) {
+            return res.status(400).json({ error: 'Los campos nombre, precio_base y tipo no pueden estar vacíos' })
+        }
+
+        // [MODIFICADO] Verificar si el nuevo nombre ya le pertenece a otro producto distinto
+        const existe = await pool.query(
+            'SELECT * FROM producto_base WHERE nombre = $1 AND id != $2',
+            [nombre, id]
+        )
+        if (existe.rows[0]) {
+            return res.status(409).json({ error: 'Ya existe otro producto con ese nombre' })
+        }
+
         const result = await pool.query(
             'UPDATE producto_base SET nombre = $1, precio_base = $2, tipo = $3 WHERE id = $4 RETURNING *',[nombre, precio_base, tipo, id]
         )
@@ -112,19 +141,32 @@ const actualizarProductoById = async (req,res) =>{
 }
 
 //eliminar producto por id
-const eliminarProductoById = async(req,res) =>{
-    try{
-        const {id} = req.params
+const eliminarProductoById = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        if (!id) {
+            return res.status(400).json({ error: 'El id del producto es requerido para eliminar' })
+        }
+
+        // 1. desvincular de producto_ingredientes
+        await pool.query('DELETE FROM producto_ingredientes WHERE producto_id = $1', [id])
+
+        // 2. eliminar el producto
         const result = await pool.query(
             'DELETE FROM producto_base WHERE id = $1 RETURNING *',
             [id]
         )
-        if (!result.rows[0]){
-            return res.status(404).json({error:'Procuto no encontrado, no eliminado'})
-        }res.json(result.rows[0])
-    }catch (err){
+
+        if (!result.rows[0]) {
+            return res.status(404).json({ error: 'Producto no encontrado' })
+        }
+
+        res.json(result.rows[0])
+
+    } catch (err) {
         console.error(err)
-        res.status(500).json({error:'Error al eliminar el producto'})
+        res.status(500).json({ error: 'Error al eliminar el producto' })
     }
 }
 

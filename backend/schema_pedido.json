@@ -1,0 +1,26 @@
+[
+  {
+    "column_name": "id",
+    "data_type": "integer"
+  },
+  {
+    "column_name": "nombre_cliente",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "telefono",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "total",
+    "data_type": "integer"
+  },
+  {
+    "column_name": "estado",
+    "data_type": "character varying"
+  },
+  {
+    "column_name": "fecha",
+    "data_type": "timestamp without time zone"
+  }
+]
